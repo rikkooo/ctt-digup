@@ -1,0 +1,405 @@
+.\" ctt-digup -- semantic file search CLI (DigUp via MCP / mcp2cli)
+.\" Man page for the ctt-digup project (https://github.com/rikkooo/ctt-digup)
+.TH CTT-DIGUP 1 "October 2026" "ctt-digup 0.1.0" "User Commands"
+.SH NAME
+ctt-digup \- semantic file search for every agent and every shell (DigUp via MCP and mcp2cli)
+.SH SYNOPSIS
+.B ctt-digup
+.I command
+.RI [ options ]
+.RI [ args ]
+.PP
+.B ctt-digup search
+.IR query ...
+.RB [ \-n
+.IR N ]
+.RB [ \-\-kind
+.IR K,K ]
+.RB [ \-\-code ]
+.RB [ \-\-json ]
+.PP
+.B ctt-digup index
+.IR folder ...
+.RB [ \-\-code ]
+.PP
+.B ctt-digup estimate
+.IR folder ...
+.RB [ \-\-json ]
+.PP
+.B ctt-digup status
+.RB [ \-\-json ]
+.PP
+.B ctt-digup download\-model
+.PP
+.B digup
+.IR command ...
+.RB [ \-\-index
+.IR DIR ]
+.PP
+.B mcp2cli
+.RB [ @digup ]
+.IR tool
+.RI [ tool\-options ]
+.SH DESCRIPTION
+.B ctt-digup
+makes DigUp's on\-device semantic file search available from bash, from scripts,
+and from any MCP\-capable agent on Windows 11 and WSL Ubuntu\-26.04.
+DigUp (https://github.com/ARahim3/DigUp) finds files by
+.I meaning
+with Google DeepMind's EmbeddingGemma 2: describe what you are looking for in
+your own words and it returns the matching PDF page, photo, video moment,
+audio minute, document passage or line of code.
+.PP
+Nothing you index leaves your computer. The model runs locally (llama.cpp);
+the only network use is the one\-time model download and DigUp's optional daily
+update check.
+.PP
+.B ctt-digup
+is a thin wrapper that exposes the DigUp MCP server as ordinary commands via
+.BR mcp2cli (1)
+(\fB@tronsfey/mcp2cli\fR). The same operations are reachable three ways:
+.RS
+.IP \(bu 2
+.B ctt-digup
+\(em friendly subcommands (\fBsearch\fR, \fBindex\fR, \fBestimate\fR, \fBstatus\fR, \fBdownload\-model\fR) for shells and scripts
+.IP \(bu 2
+.B digup
+\(em the native DigUp developer CLI, with the full flag set
+.IP \(bu 2
+.B mcp2cli
+\(em the raw MCP tool names (\fBdigup_search\fR, \fBdigup_index\fR, \fBdigup_estimate\fR, \fBdigup_status\fR, \fBdigup_download_model\fR) for agent integration
+.RE
+.SH COMMANDS
+.SS ctt-digup commands
+.TP
+.B ctt-digup search \fIquery...\fR [\fB\-n\fR \fIN\fR] [\fB\-\-kind\fR \fIK,K\fR] [\fB\-\-code\fR] [\fB\-\-json\fR]
+Search the index by meaning (and by exact words). \fIquery\fR is one or more words;
+quote multi\-word phrases. \fB\-n\fR/\fB\-\-limit\fR sets how many hits to return
+(default 10). \fB\-\-kind\fR filters to a comma\-separated list of
+\fBscreenshot\fR, \fBimage\fR, \fBpdf\fR, \fBdoc\fR, \fBaudio\fR, \fBvideo\fR.
+\fB\-\-code\fR (or a query starting with \fBcode:\fR) searches the code index.
+\fB\-\-json\fR prints a JSON array of hits (see \fBOUTPUT\fR).
+.TP
+.B ctt-digup index \fIfolder...\fR [\fB\-\-code\fR]
+Sync the index with the given folders: embed what is new, then the rest of long
+PDFs and documents. \fB\-\-code\fR also builds the code index (source files, the
+repos' docs and notebooks, minus what git ignores).
+.TP
+.B ctt-digup estimate \fIfolder...\fR [\fB\-\-json\fR]
+Report what would be indexed and how long the first pass takes on this machine,
+per folder. Always run this before a large first index.
+.TP
+.B ctt-digup status [\fB\-\-json\fR]
+Show what is in the index: path of the index database, vector and segment counts,
+per\-kind file counts, and index size.
+.TP
+.B ctt-digup download\-model
+Download (or resume downloading) the EmbeddingGemma 2 model files (~865 MB).
+Run once before indexing or searching.
+.TP
+.B ctt-digup list\-tools
+List the MCP tools exposed by the DigUp server (mcp2cli \fB\-\-list\fR).
+.TP
+.B ctt-digup help
+Print the wrapper's help text, the tool mapping and examples.
+.SS digup native commands
+These are the DigUp developer CLI subcommands. \fBctt-digup\fR maps onto them;
+use \fBdigup\fR directly when you need the full flag set.
+.TP
+.B digup estimate \fIfolder...\fR [\fB\-\-json\fR]
+What would be indexed, and how long the first pass takes.
+.TP
+.B digup index \fIfolder...\fR [\fB\-\-limit\fR \fIN\fR] [\fB\-\-code\fR] [\fB\-\-reindex\fR]
+Sync the index with these folders and embed what is new.
+\fB\-\-limit\fR caps the number of files in this pass; \fB\-\-reindex\fR drops
+vectors and embeds everything again (after a settings or model change).
+.TP
+.B digup search \fIwords...\fR [\fB\-\-kind\fR \fIK,K\fR] [\fB\-n\fR \fIN\fR] [\fB\-\-json\fR]
+Search by meaning. A query starting with \fBcode:\fR searches the code index,
+e.g. \fBdigup search "code: retry a failed call with backoff"\fR.
+.TP
+.B digup status
+What is in the index (authoritative index location).
+.TP
+.B digup download\-model [\fB\-\-to\fR \fIDIR\fR]
+Fetch the model files, with resume, checked (JSON lines progress).
+.TP
+.B digup speed [\fB\-\-model\fR]
+This machine's speed next to the M4 Pro behind the estimates, and what indexing
+has measured here.
+.SS mcp2cli tool mapping
+.B ctt-digup
+is backed by the DigUp MCP server (\fBsrc/mcp-server/index.js\fR) through
+.BR mcp2cli .
+Each MCP tool becomes a CLI command:
+.PP
+.RS
+.nf
+MCP tool              ctt-digup / mcp2cli call          digup native
+---------------------------------------------------------------------------
+digup_search          ctt-digup search ...              digup search ...
+digup_index           ctt-digup index ...               digup index ...
+digup_estimate        ctt-digup estimate ...            digup estimate ...
+digup_status          ctt-digup status                  digup status
+digup_download_model  ctt-digup download-model          digup download-model
+.fi
+.RE
+.PP
+Raw tool calls (for agents and scripts) use mcp2cli's tool\-name form:
+.PP
+.RS
+.nf
+mcp2cli @digup --list
+mcp2cli @digup digup_status
+mcp2cli @digup digup_search --query "zebra in a video" --limit 5
+mcp2cli @digup digup_search --input-json '{"query":"invoice","limit":3}' --json
+.fi
+.RE
+.SH OPTIONS
+.SS Search and index options
+.TP
+.BR \-n ", " \-\-limit " " \fIN\fR
+Return at most \fIN\fR hits (search; default 10) or index at most \fIN\fR files
+in this pass (index).
+.TP
+.BI \-\-kind " K,K"
+Restrict to file kinds: \fBscreenshot\fR, \fBimage\fR, \fBpdf\fR, \fBdoc\fR,
+\fBaudio\fR, \fBvideo\fR. Comma\-separated. For example
+\fB\-\-kind pdf,doc\fR finds the lease clause and skips photos.
+.TP
+.B \-\-code
+Estimate, index or search the code index (\fBcode.sqlite\fR in the index
+folder): source files, their repos' docs and notebooks, minus what git ignores.
+.TP
+.B \-\-include\-code
+Also index loose source code and data files as documents (outside code projects).
+.TP
+.B \-\-include\-datasets
+Do not skip folders that look like datasets.
+.TP
+.BI \-\-exclude " DIR"
+Do not index this folder (repeatable).
+.TP
+.BI \-\-exclude\-ext " EXT"
+Do not index files with this extension (repeatable, or comma\-separated:
+\fB\-\-exclude\-ext heic,txt\fR).
+.TP
+.B \-\-reindex
+Drop vectors and embed everything again (after changing settings or model).
+.SS Index location
+.TP
+.BI \-\-index " DIR"
+Use \fIDIR\fR as the index folder instead of DigUp's default Application
+Support folder. Keep separate corpora apart with separate index folders, e.g.
+\fB\-\-index ~/indexes/windows\fR vs \fB\-\-index ~/indexes/wsl\fR.
+.SS Output and mcp2cli options
+.TP
+.B \-\-json
+Machine\-readable JSON output (search: an array of hits; estimate: one JSON
+object per folder; status: a JSON object).
+.TP
+.B \-\-input\-json \fIjson\fR
+Pass tool arguments to an mcp2cli tool call as a JSON object.
+.TP
+.B \-\-raw
+Raw JSON output from mcp2cli (no pretty\-printing).
+.TP
+.BI \-\-jq " expression"
+Filter mcp2cli output with a JMESPath expression.
+.TP
+.BR \-l ", " \-\-list
+List available MCP tools and exit.
+.TP
+.BI \-\-describe " tool"
+Show a tool's schema (parameters, types, descriptions).
+.SS Ranking options (digup native)
+.TP
+.BI \-\-zgate " Z"
+How far a meaning match must stand out (default 2.0).
+.TP
+.BI \-\-word\-weight " W"
+Bonus for containing all of the query's words (default 2.0).
+.SH OUTPUT
+.B ctt-digup search \-\-json
+prints a JSON array. Each hit has at least \fBpath\fR, \fBkind\fR,
+\fBsegment\fR, \fBsegment_id\fR, \fBscore\fR, \fBmodified\fR, \fBsize\fR and
+\fBinfo\fR, and when they apply \fBz\fR (how far the best segment stands out),
+\fBcosine\fR, \fBkeyword_rank\fR, \fBloc\fR / \fBloc_end\fR (PDF page, or seconds
+into audio/video, or the code stretch), \fBfocus\fR (code line to open at) and
+\fBexcerpt\fR (a short text snippet):
+.PP
+.RS
+.nf
+[
+  {
+    "excerpt" : "...tenant may keep one pet with written consent...",
+    "info" : { "pages" : "24" },
+    "kind" : "pdf",
+    "loc" : 7,
+    "path" : "/mnt/c/Users/enric/Documents/lease.pdf",
+    "score" : 12.4,
+    "segment" : "page",
+    "segment_id" : 412,
+    "size" : 184320,
+    "z" : 3.1
+  }
+]
+.fi
+.RE
+.SH EXAMPLES
+.TP
+Download the model once (resumes if interrupted):
+.PP
+.RS
+.nf
+digup download-model
+.fi
+.RE
+.TP
+Estimate, then index the Windows user folders from WSL:
+.PP
+.RS
+.nf
+digup estimate /mnt/c/Users/enric/Documents /mnt/c/Users/enric/Desktop \\
+               /mnt/c/Users/enric/Downloads
+digup index    /mnt/c/Users/enric/Documents /mnt/c/Users/enric/Desktop \\
+               /mnt/c/Users/enric/Downloads
+.fi
+.RE
+.TP
+Index WSL folders with the code index on:
+.PP
+.RS
+.nf
+digup index ~/devs --code
+.fi
+.RE
+.TP
+Find the pets clause in a lease (semantic search):
+.PP
+.RS
+.nf
+ctt-digup search "the clause about pets in the lease" --kind pdf
+.fi
+.RE
+.TP
+Find the moment a zebra shows up in a video, JSON out:
+.PP
+.RS
+.nf
+ctt-digup search "zebra in a video" --kind video --json
+.fi
+.RE
+.TP
+Find a function by what it does (code index):
+.PP
+.RS
+.nf
+digup search "code: retry a failed call with backoff"
+.fi
+.RE
+.TP
+Search one corpus only, with a dedicated index folder:
+.PP
+.RS
+.nf
+digup search "invoice from last March" --index ~/indexes/windows --json
+.fi
+.RE
+.TP
+Check index health and size:
+.PP
+.RS
+.nf
+ctt-digup status
+digup status --index ~/indexes/wsl
+.fi
+.RE
+.TP
+Call the same tool through mcp2cli (agent style):
+.PP
+.RS
+.nf
+mcp2cli @digup digup_search --query "payment declined error" --limit 5
+mcp2cli @digup digup_status --json
+.fi
+.RE
+.TP
+Pipe hits into jq and open the first path:
+.PP
+.RS
+.nf
+ctt-digup search "invoice from last March" --json \\
+  | jq -r '.[0].path' | xargs xdg-open
+.fi
+.RE
+.SH ENVIRONMENT
+.TP
+.B DIGUP_BIN
+Path to the \fBdigup\fR binary used by the MCP server and the \fBctt-digup\fR
+wrapper. Default: \fB/usr/local/bin/digup\fR on Linux/WSL. Set it when digup
+lives elsewhere, e.g. \fBDIGUP_BIN=/usr/lib/DigUp/helper/digup\fR.
+.TP
+.B DIGUP_MODELS
+Directory that holds the EmbeddingGemma 2 model files. When set, digup looks
+for the model
+.I only
+there; otherwise it uses DigUp's Application Support folder or the Hugging Face
+cache. Share one download across index folders with
+\fBDIGUP_MODELS=~/.local/share/digup/Models\fR.
+.TP
+.B DIGUP_WORKER_DIR
+Set to \fBworker\fR to use the mlx\-lm reference worker instead of llama.cpp
+(evals only).
+.TP
+.B MANPATH
+Include the directory holding \fBctt-digup.1\fR (or install it into
+\fB/usr/local/share/man/man1\fR) so \fBman ctt-digup\fR resolves.
+.SH FILES
+.TP
+.I ~/.local/share/digup/index/index.sqlite
+Default main vector + keyword index on Linux and WSL (see \fBdigup status\fR
+for the authoritative path). Windows: under \fB%LOCALAPPDATA%\fR (DigUp's data
+folder). macOS: \fB~/Library/Application Support/DigUp/\fR.
+.TP
+.I ~/.local/share/digup/index/code.sqlite
+Code index (built with \fB\-\-code\fR), kept separate from document search.
+.TP
+.I ~/.local/share/digup/Models/
+Default model folder on Linux/WSL (override with \fBDIGUP_MODELS\fR).
+.TP
+.I ~/.local/share/digup/index/costs.json
+What indexing has measured on this machine (used by \fBestimate\fR).
+.TP
+.I ~/.mcp2cli/bakes.json
+mcp2cli saved server shortcuts (the \fB@digup\fR bake).
+.TP
+.I mcp.json
+MCP server registration (command, args, \fBDIGUP_BIN\fR); see
+\fIdocs/MANUAL.md\fR chapter "MCP integration".
+.TP
+.I /usr/local/share/man/man1/ctt-digup.1
+Install location for this man page:
+\fBsudo cp man/ctt-digup.1 /usr/local/share/man/man1/\fR.
+.SH EXIT STATUS
+.B 0
+on success;
+.B 1
+on usage or runtime errors (e.g. searching before any folder is indexed, or a
+missing model);
+.B 2
+on invalid arguments.
+.SH SEE ALSO
+.BR digup (1),
+.BR mcp2cli (1),
+.BR jq (1),
+.BR man (1)
+.PP
+Full setup, indexing policy, MCP integration and a copy\-paste cookbook:
+\fIdocs/MANUAL.md\fR in the ctt-digup repository.
+.PP
+DigUp project: https://github.com/ARahim3/DigUp
+.br
+EmbeddingGemma 2: https://huggingface.co/google/embeddinggemma-2
+.SH AUTHORS
+ctt-digup contributors. DigUp by Abdurrahim (ARahim3).

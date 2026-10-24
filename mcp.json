@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "digup": {
+      "command": "node",
+      "args": ["/home/ubuntu/devs/ctt-digup/src/mcp-server/index.js"],
+      "env": { "DIGUP_BIN": "/usr/local/bin/digup" }
+    }
+  }
+}

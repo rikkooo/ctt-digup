@@ -1,0 +1,28 @@
+{
+  "name": "digup-mcp",
+  "version": "0.1.0",
+  "description": "MCP (Model Context Protocol) stdio server exposing the DigUp semantic file-search CLI as tools: digup_search, digup_index, digup_estimate, digup_status, digup_download_model.",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "digup-mcp": "index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "smoke": "node smoke-test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "digup",
+    "semantic-search"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^3.25.0"
+  }
+}

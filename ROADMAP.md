@@ -6,15 +6,15 @@
 
 | # | Card | Milestone | Status |
 |---|---|---|---|
-| 1 | [cards/01-install-digup.md](cards/01-install-digup.md) | DigUp engine + CLI installed on WSL Ubuntu-26.04 and Windows 11 | |
-| 2 | [cards/02-index-windows.md](cards/02-index-windows.md) | Windows 11 user folders indexed and searchable | |
-| 3 | [cards/03-index-wsl.md](cards/03-index-wsl.md) | WSL Ubuntu-26.04 folders indexed and searchable | |
-| 4 | [cards/04-mcp-server.md](cards/04-mcp-server.md) | MCP server exposing DigUp operations | |
-| 5 | [cards/05-mcp2cli.md](cards/05-mcp2cli.md) | MCP server converted to CLI via mcp2cli | |
-| 6 | [cards/06-cli-docs.md](cards/06-cli-docs.md) | bash man page + comprehensive manual with setup/usage/examples | |
-| 7 | [cards/07-github-issues.md](cards/07-github-issues.md) | All cards registered as GitHub issues and tracked | |
-| 8 | [cards/08-subagent-kimi.md](cards/08-subagent-kimi.md) | Sub-agent execution + Kimi dual-diligence reports per card | |
-| 9 | [cards/09-agent-skill.md](cards/09-agent-skill.md) | Skill package usable by any other agent | |
+| 1 | [cards/01-install-digup.md](cards/01-install-digup.md) | DigUp engine + CLI installed on WSL Ubuntu-26.04 and Windows 11 | [#1](https://github.com/rikkooo/ctt-digup/issues/1) |
+| 2 | [cards/02-index-windows.md](cards/02-index-windows.md) | Windows 11 user folders indexed and searchable | [#2](https://github.com/rikkooo/ctt-digup/issues/2) |
+| 3 | [cards/03-index-wsl.md](cards/03-index-wsl.md) | WSL Ubuntu-26.04 folders indexed and searchable | [#3](https://github.com/rikkooo/ctt-digup/issues/3) |
+| 4 | [cards/04-mcp-server.md](cards/04-mcp-server.md) | MCP server exposing DigUp operations | [#4](https://github.com/rikkooo/ctt-digup/issues/4) |
+| 5 | [cards/05-mcp2cli.md](cards/05-mcp2cli.md) | MCP server converted to CLI via mcp2cli | [#5](https://github.com/rikkooo/ctt-digup/issues/5) |
+| 6 | [cards/06-cli-docs.md](cards/06-cli-docs.md) | bash man page + comprehensive manual with setup/usage/examples | [#6](https://github.com/rikkooo/ctt-digup/issues/6) |
+| 7 | [cards/07-github-issues.md](cards/07-github-issues.md) | All cards registered as GitHub issues and tracked | [#7](https://github.com/rikkooo/ctt-digup/issues/7) |
+| 8 | [cards/08-subagent-kimi.md](cards/08-subagent-kimi.md) | Sub-agent execution + Kimi dual-diligence reports per card | [#8](https://github.com/rikkooo/ctt-digup/issues/8) |
+| 9 | [cards/09-agent-skill.md](cards/09-agent-skill.md) | Skill package usable by any other agent | [#9](https://github.com/rikkooo/ctt-digup/issues/9) |
 
 ## Principles
 

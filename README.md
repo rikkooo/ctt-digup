@@ -19,6 +19,7 @@ DigUp ([ARahim3/DigUp](https://github.com/ARahim3/DigUp)) finds files by *meanin
 | `ROADMAP.md` | Mission-stated roadmap; each milestone = one card |
 | `cards/` | One markdown file per requirement card (implementation instructions) |
 | `src/mcp-server/` | MCP server wrapping the DigUp CLI |
+| `mcp.json` | Sample MCP client config for the DigUp server |
 | `scripts/` | Install, index, mcp2cli wiring, kimi diligence runner |
 | `man/` | bash man page + comprehensive manual |
 | `docs/` | Manual, setup, usage, examples |
@@ -60,6 +61,35 @@ npm install -g @tronsfey/mcp2cli
 # 5. Search
 ctt-digup search "invoice from last March"
 ```
+
+## MCP server
+
+`src/mcp-server/` is a stdio MCP server exposing DigUp as five tools
+(`digup_search`, `digup_index`, `digup_estimate`, `digup_status`,
+`digup_download_model`). Full tool schemas and example responses:
+[docs/MCP.md](docs/MCP.md).
+
+Sample MCP client config (also in [`mcp.json`](mcp.json)):
+
+```json
+{
+  "mcpServers": {
+    "digup": {
+      "command": "node",
+      "args": ["/home/ubuntu/devs/ctt-digup/src/mcp-server/index.js"],
+      "env": { "DIGUP_BIN": "/usr/local/bin/digup" }
+    }
+  }
+}
+```
+
+Smoke-test the server without a client:
+
+```bash
+cd src/mcp-server && npm install && npm run smoke
+```
+
+**Documentation:** [man page](man/ctt-digup.1) (`man ctt-digup` after `sudo cp man/ctt-digup.1 /usr/local/share/man/man1/`) · [full manual](docs/MANUAL.md) (setup, indexing, searching, MCP, CLI reference, examples cookbook, troubleshooting)
 
 ## Delivery model
 

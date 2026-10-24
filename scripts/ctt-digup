@@ -1,0 +1,358 @@
+#!/usr/bin/env bash
+# ctt-digup — shell front door for the DigUp MCP server (via mcp2cli).
+#
+# Forwards every call to `mcp2cli @ctt-digup` (a saved "bake" pointing at
+# src/mcp-server/index.js), so any shell gets the DigUp tools without an
+# MCP client. Sets DIGUP_BIN when unset, and adds friendly subcommands on
+# top of the raw MCP tool names.
+#
+# See docs/MCP2CLI.md for the full MCP tool <-> CLI <-> digup mapping.
+# Works under Git Bash (MSYS), WSL, and plain Linux/macOS bash.
+
+set -euo pipefail
+
+# ── config ────────────────────────────────────────────────────────────────
+BAKE_NAME="${CTT_DIGUP_BAKE:-ctt-digup}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# ── environment detection ─────────────────────────────────────────────────
+is_wsl() { [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi microsoft /proc/version 2>/dev/null; }
+is_windows_host() { case "$(uname -s 2>/dev/null)" in MINGW*|MSYS*|CYGWIN*) return 0 ;; *) return 1 ;; esac; }
+
+# ── digup binary default (DIGUP_BIN honored if already set) ───────────────
+set_digup_bin() {
+  [ -n "${DIGUP_BIN:-}" ] && return 0
+  if is_wsl || [ "$(uname -s 2>/dev/null)" = "Linux" ]; then
+    [ -x /usr/local/bin/digup ] && export DIGUP_BIN=/usr/local/bin/digup
+    return 0
+  fi
+  local candidates=(
+    "${LOCALAPPDATA:-}/DigUp/helper/digup.exe"
+    "${HOME}/AppData/Local/DigUp/helper/digup.exe"
+    "/c/Users/${USERNAME:-${USER:-}}/AppData/Local/DigUp/helper/digup.exe"
+    "/mnt/c/Users/${USERNAME:-${USER:-}}/AppData/Local/DigUp/helper/digup.exe"
+    "/usr/local/bin/digup"
+  )
+  local c
+  for c in "${candidates[@]}"; do
+    if [ -n "$c" ] && [ -x "$c" ]; then
+      export DIGUP_BIN="$c"
+      return 0
+    fi
+  done
+  return 0 # leave unset; MCP server falls back to its own search order
+}
+
+# ── locate the MCP server entry ───────────────────────────────────────────
+resolve_server_js() {
+  local candidates=(
+    "${CTT_DIGUP_ROOT:-}/src/mcp-server/index.js"
+    "${REPO_ROOT}/src/mcp-server/index.js"
+  )
+  if is_wsl; then
+    candidates+=(
+      "/mnt/c/devs/ctt-digup/src/mcp-server/index.js"
+    )
+  elif is_windows_host; then
+    candidates+=(
+      "C:/devs/ctt-digup/src/mcp-server/index.js"
+      "/c/devs/ctt-digup/src/mcp-server/index.js"
+    )
+  else
+    candidates+=(
+      "/c/devs/ctt-digup/src/mcp-server/index.js"
+      "${HOME}/devs/ctt-digup/src/mcp-server/index.js"
+    )
+  fi
+  local c
+  for c in "${candidates[@]}"; do
+    if [ -n "$c" ] && [ -f "$c" ]; then
+      printf '%s\n' "$c"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Windows node cannot open /c/... Git-Bash paths — normalise to C:/...
+to_node_path() {
+  local p="$1"
+  if is_windows_host && [[ "$p" == /c/* ]]; then
+    printf 'C:/%s\n' "${p#/c/}"
+    return 0
+  fi
+  printf '%s\n' "$p"
+}
+
+# ── locate mcp2cli (sets MCP2CLI_CMD array) ───────────────────────────────
+# NOTE (WSL): `command -v mcp2cli` often resolves to the *Windows* npm shim
+# via PATH interop. That shim runs Windows node.exe, which mangles POSIX
+# server paths (C:\mnt\c\...) and writes bakes.json into the Windows profile.
+# Under WSL/Linux we therefore prefer `node <mcp2cli JS bin>` with the
+# distro's own node, so the bake and the server share one path convention.
+find_mcp2cli() {
+  if [ -n "${MCP2CLI:-}" ]; then
+    MCP2CLI_CMD=("$MCP2CLI")
+    return 0
+  fi
+  local root hit
+  if is_wsl || [ "$(uname -s 2>/dev/null)" = "Linux" ]; then
+    for root in \
+      "$(npm root -g 2>/dev/null || true)" \
+      "/mnt/c/Users/${USERNAME:-${USER:-}}/AppData/Roaming/npm/node_modules" \
+      "${HOME}/AppData/Roaming/npm/node_modules" \
+      "${APPDATA:-}/npm/node_modules"
+    do
+      if [ -n "$root" ] && [ -f "$root/@tronsfey/mcp2cli/bin/mcp2cli" ]; then
+        MCP2CLI_CMD=(node "$root/@tronsfey/mcp2cli/bin/mcp2cli")
+        return 0
+      fi
+    done
+    hit=$(ls /mnt/c/Users/*/AppData/Roaming/npm/node_modules/@tronsfey/mcp2cli/bin/mcp2cli 2>/dev/null | head -1 || true)
+    if [ -n "$hit" ]; then
+      MCP2CLI_CMD=(node "$hit")
+      return 0
+    fi
+  fi
+  # Windows host (Git Bash/MSYS) and fallbacks
+  if command -v mcp2cli >/dev/null 2>&1; then
+    MCP2CLI_CMD=(mcp2cli)
+    return 0
+  fi
+  if command -v mcp2cli.cmd >/dev/null 2>&1; then
+    MCP2CLI_CMD=(mcp2cli.cmd)
+    return 0
+  fi
+  for root in \
+    "${APPDATA:-}/npm/node_modules" \
+    "$(npm root -g 2>/dev/null || true)" \
+    "${HOME}/AppData/Roaming/npm/node_modules"
+  do
+    if [ -n "$root" ] && [ -f "$root/@tronsfey/mcp2cli/bin/mcp2cli" ]; then
+      MCP2CLI_CMD=(node "$root/@tronsfey/mcp2cli/bin/mcp2cli")
+      return 0
+    fi
+  done
+  return 1
+}
+
+# ── ensure the bake exists and points at OUR server entry ─────────────────
+ensure_bake() {
+  local server_js="$1"
+  local want="node $(to_node_path "$server_js")"
+  local marker="${HOME}/.mcp2cli/bakes.json"
+  if [ -f "$marker" ] && grep -q "\"${BAKE_NAME}\"" "$marker" 2>/dev/null \
+     && grep -Fq "$want" "$marker" 2>/dev/null; then
+    return 0
+  fi
+  "${MCP2CLI_CMD[@]}" bake create "$BAKE_NAME" --mcp-stdio "$want" >/dev/null
+  echo "[ctt-digup] registered mcp2cli bake '${BAKE_NAME}' -> ${want}" >&2
+}
+
+# ── help ──────────────────────────────────────────────────────────────────
+usage() {
+  cat <<'EOF'
+ctt-digup — DigUp MCP tools from any shell (via mcp2cli)
+
+Usage:
+  ctt-digup <friendly-command> [args]     human-friendly subcommands (below)
+  ctt-digup <mcp-tool> [flags]            raw MCP tool names (digup_*)
+
+Friendly commands:
+  search QUERY... [-n N] [--kind K,K]... [--code] [--json|--raw] [--jq EXPR]
+                                        semantic search (digup_search)
+  index DIR... [--code]                 sync + embed folders (digup_index)
+  estimate DIR... [--json]              count files + ETA (digup_estimate)
+  status                                index stats (digup_status)
+  download-model                        fetch the embedding model
+  list-tools                            list MCP tools (mcp2cli --list)
+  help                                  this text
+
+Raw MCP tools (mcp2cli parameter flags):
+  digup_search    --query S [--limit N] [--kind K ...] [--code true]
+  digup_index     --folders DIR [--folders DIR ...] [--code true]
+  digup_estimate  --folders DIR [--folders DIR ...]
+  digup_status    (no parameters)
+  digup_download_model  (no parameters)
+
+Mapping (MCP tool <-> ctt-digup <-> digup native):
+  digup_search         -> ctt-digup search         -> digup search QUERY
+  digup_index          -> ctt-digup index          -> digup index DIR...
+  digup_estimate       -> ctt-digup estimate       -> digup estimate DIR...
+  digup_status         -> ctt-digup status         -> digup status
+  digup_download_model -> ctt-digup download-model -> digup download-model
+
+Examples:
+  ctt-digup list-tools
+  ctt-digup status
+  ctt-digup search "zebra in a video" -n 5
+  ctt-digup search invoice --kind pdf,doc --json
+  ctt-digup estimate "C:/Users/me/Documents"
+  ctt-digup index "C:/Users/me/Documents" --code
+  ctt-digup digup_search "zebra in a video" --limit 5
+  ctt-digup digup_search --input-json '{"query":"invoice","limit":3}' --jq 'data[*].path'
+  ctt-digup --describe digup_search
+
+mcp2cli flags pass through unchanged: --json --raw --jq --input-json
+--describe --debug --no-cache --cache-ttl --pretty --list
+
+Environment:
+  DIGUP_BIN            digup binary (default: platform helper\digup.exe or
+                       /usr/local/bin/digup). Honored by the MCP server.
+  DIGUP_WSL_DISTRO     on Windows, run the engine inside this WSL distro
+  DIGUP_TIMEOUT_MS     digup spawn timeout override
+  CTT_DIGUP_BAKE       mcp2cli bake name (default: ctt-digup)
+  CTT_DIGUP_ROOT       repo root if this script is not inside the checkout
+  MCP2CLI              mcp2cli executable override
+
+Docs: docs/MCP2CLI.md  |  Manual: docs/MANUAL.md
+EOF
+}
+
+# ── argument translation ──────────────────────────────────────────────────
+# Splits argv into: TOOL, TOOL_ARGS (tool params), PASS (mcp2cli flags).
+TOOL=""
+TOOL_ARGS=()
+PASS=()
+QUERY_WORDS=()
+FOLDERS=()
+
+split_kinds() {
+  # "pdf,doc" -> two --kind values
+  local spec="$1" part
+  local IFS=','
+  for part in $spec; do
+    [ -n "$part" ] && TOOL_ARGS+=(--kind "$part")
+  done
+}
+
+parse() {
+  local mode="$1"; shift || true
+  local saw_dash=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --help|-h)
+        usage; exit 0 ;;
+      # ── tool parameter flags ──
+      --query)
+        [ $# -ge 2 ] || { echo "ctt-digup: --query needs a value" >&2; exit 2; }
+        TOOL_ARGS+=(--query "$2"); shift 2 ;;
+      --limit|-n)
+        [ $# -ge 2 ] || { echo "ctt-digup: $1 needs a value" >&2; exit 2; }
+        TOOL_ARGS+=(--limit "$2"); shift 2 ;;
+      --kind)
+        [ $# -ge 2 ] || { echo "ctt-digup: --kind needs a value" >&2; exit 2; }
+        split_kinds "$2"; shift 2 ;;
+      --code)
+        # accept both `--code` and `--code true`
+        if [ $# -ge 2 ] && [ "$2" != "true" ] && [ "$2" != "false" ]; then
+          TOOL_ARGS+=(--code true); shift
+        elif [ $# -ge 2 ]; then
+          TOOL_ARGS+=(--code "$2"); shift 2
+        else
+          TOOL_ARGS+=(--code true); shift
+        fi ;;
+      --folders)
+        [ $# -ge 2 ] || { echo "ctt-digup: --folders needs a value" >&2; exit 2; }
+        TOOL_ARGS+=(--folders "$2"); shift 2 ;;
+      # ── mcp2cli passthrough (with value) ──
+      --jq|--input-json|--describe|--cache-ttl)
+        [ $# -ge 2 ] || { echo "ctt-digup: $1 needs a value" >&2; exit 2; }
+        PASS+=("$1" "$2"); shift 2 ;;
+      # ── mcp2cli passthrough (bare) ──
+      --json|--raw|--pretty|--debug|--no-cache|--list)
+        PASS+=("$1"); shift ;;
+      # ── short sugar used by friendly search ──
+      --json-out)
+        PASS+=(--json); shift ;;
+      # ── positionals ──
+      --*)
+        # unknown flag: pass through untouched
+        PASS+=("$1"); shift ;;
+      *)
+        saw_dash=1
+        case "$mode" in
+          search|digup_search)
+            QUERY_WORDS+=("$1"); shift ;;
+          index|estimate|digup_index|digup_estimate)
+            FOLDERS+=("$1"); shift ;;
+          *)
+            PASS+=("$1"); shift ;;
+        esac ;;
+    esac
+  done
+  return 0
+}
+
+main() {
+  set_digup_bin
+
+  if ! find_mcp2cli; then
+    cat >&2 <<'EOF'
+ctt-digup: mcp2cli not found.
+  Install it:  npm install -g @tronsfey/mcp2cli
+  Or point at it:  MCP2CLI=/path/to/mcp2cli ctt-digup ...
+EOF
+    exit 1
+  fi
+
+  local server_js
+  if ! server_js="$(resolve_server_js)"; then
+    echo "ctt-digup: cannot find src/mcp-server/index.js (set CTT_DIGUP_ROOT)" >&2
+    exit 1
+  fi
+
+  ensure_bake "$server_js"
+
+  # no args / help
+  if [ $# -eq 0 ]; then
+    usage
+    exit 0
+  fi
+
+  local cmd="$1"; shift
+
+  case "$cmd" in
+    help|-h|--help)
+      usage; exit 0 ;;
+    list-tools|list|--list)
+      exec "${MCP2CLI_CMD[@]}" "@${BAKE_NAME}" --list ;;
+    status|digup_status)
+      parse status "$@"
+      exec "${MCP2CLI_CMD[@]}" "@${BAKE_NAME}" digup_status "${TOOL_ARGS[@]}" "${PASS[@]}" ;;
+    download-model|digup_download_model)
+      parse digup_download_model "$@"
+      exec "${MCP2CLI_CMD[@]}" "@${BAKE_NAME}" digup_download_model "${TOOL_ARGS[@]}" "${PASS[@]}" ;;
+    search|digup_search)
+      parse search "$@"
+      local q=""
+      if [ ${#QUERY_WORDS[@]} -gt 0 ]; then
+        q="${QUERY_WORDS[*]}"
+      fi
+      local extra=()
+      [ -n "$q" ] && extra+=(--query "$q")
+      exec "${MCP2CLI_CMD[@]}" "@${BAKE_NAME}" digup_search "${extra[@]}" "${TOOL_ARGS[@]}" "${PASS[@]}" ;;
+    index|digup_index)
+      parse index "$@"
+      local extra=()
+      local d
+      for d in "${FOLDERS[@]}"; do extra+=(--folders "$d"); done
+      exec "${MCP2CLI_CMD[@]}" "@${BAKE_NAME}" digup_index "${extra[@]}" "${TOOL_ARGS[@]}" "${PASS[@]}" ;;
+    estimate|digup_estimate)
+      parse estimate "$@"
+      local extra=()
+      local d
+      for d in "${FOLDERS[@]}"; do extra+=(--folders "$d"); done
+      exec "${MCP2CLI_CMD[@]}" "@${BAKE_NAME}" digup_estimate "${extra[@]}" "${TOOL_ARGS[@]}" "${PASS[@]}" ;;
+    --*)
+      # bare mcp2cli flags, e.g. `ctt-digup --describe digup_search`
+      exec "${MCP2CLI_CMD[@]}" "@${BAKE_NAME}" "$cmd" "$@" ;;
+    *)
+      # unknown tool name: forward verbatim (mcp2cli reports its own error)
+      parse "" "$cmd" "$@"
+      exec "${MCP2CLI_CMD[@]}" "@${BAKE_NAME}" "$cmd" "${TOOL_ARGS[@]}" "${PASS[@]}" ;;
+  esac
+}
+
+main "$@"
