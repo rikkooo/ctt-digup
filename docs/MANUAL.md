@@ -1,4 +1,4 @@
-# ctt-digup Manual
+﻿# ctt-digup Manual
 
 Semantic file search for every agent and every shell — DigUp on Windows 11 and WSL Ubuntu-26.04, through an MCP server and a documented CLI.
 
@@ -107,9 +107,10 @@ export DIGUP_MODELS=$HOME/.local/share/digup/Models
 npm install -g @tronsfey/mcp2cli
 
 # Register the DigUp MCP server as a saved shortcut ("bake")
+mcp2cli bake create ctt-digup \
+  --mcp-stdio "node $HOME/devs/ctt-digup/src/mcp-server/index.js"
 mcp2cli bake create digup \
-  --mcp-stdio "node $HOME/devs/ctt-digup/src/mcp-server/index.js" \
-  --env DIGUP_BIN=/usr/local/bin/digup
+  --mcp-stdio "node $HOME/devs/ctt-digup/src/mcp-server/index.js"
 
 # Wrapper on PATH (forwards args to mcp2cli, sets DIGUP_BIN if unset)
 install -m 0755 scripts/ctt-digup /usr/local/bin/ctt-digup   # or ~/bin
@@ -119,7 +120,7 @@ ctt-digup list-tools
 ctt-digup status
 ```
 
-Bakes are stored in `~/.mcp2cli/bakes.json`. Check them with `mcp2cli bake list`.
+Bakes are stored in `~/.mcp2cli/bakes.json` (per OS user — Windows and each WSL distro have their own). Check them with `mcp2cli bake list`. Do **not** add `--env` to a bake: mcp2cli's variadic `--env` swallows the tool name at call time — export `DIGUP_BIN` in the shell instead. Full bridge docs: [`docs/MCP2CLI.md`](MCP2CLI.md).
 
 ### 1.6 Install the man page
 
@@ -379,7 +380,7 @@ mcp2cli @digup digup_index --input-json '{"folders":["/home/ubuntu/devs"],"code"
 mcp2cli @digup digup_search --query "payment declined" --jq 'hits[*].path'
 ```
 
-The `ctt-digup` wrapper sets `DIGUP_BIN` if unset and forwards everything else to `mcp2cli @digup`, so `ctt-digup search …` and `mcp2cli @digup digup_search --query …` are the same pipeline.
+The `ctt-digup` wrapper sets `DIGUP_BIN` if unset and forwards everything else to `mcp2cli @ctt-digup` (the `digup` bake is a short alias for the same server), so `ctt-digup search …` and `mcp2cli @digup digup_search --query …` are the same pipeline. Mapping details: [`docs/MCP2CLI.md`](MCP2CLI.md).
 
 ---
 
@@ -433,6 +434,8 @@ The `ctt-digup` wrapper sets `DIGUP_BIN` if unset and forwards everything else t
 | `--code-stretch N` | index | max chars per code stretch (default 1800) |
 
 ### 5.4 mcp2cli options (through `ctt-digup`)
+
+Full bridge documentation (bakes, wrapper install, parity evidence, Windows/WSL gotchas): [`docs/MCP2CLI.md`](MCP2CLI.md).
 
 | Flag | Meaning |
 |---|---|
