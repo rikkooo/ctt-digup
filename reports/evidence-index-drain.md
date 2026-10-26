@@ -136,3 +136,24 @@ no-data-loss policy; if a future cleanup is wanted, remove via digup's index-rem
 | 09:52:55 | code drain started (nohup → `/tmp/code-index-drain.log`) |
 | 09:57:11 | code drain finished — 68 done · 1 skipped this run; code.sqlite 304 done · 5 skipped |
 | ~09:57–10:0x | estimates + search smoke executed |
+
+---
+
+## 6. Leftover cleanup (executed 2026-10-26)
+
+All `/tmp` debris has been removed from disk and pruned from the index via
+`digup index /tmp` (sync reports `0 removed` on the final pass):
+
+| Artifact | Action |
+|---|---|
+| `/tmp/digup-smoke/{a,b}.txt` | deleted + rows pruned |
+| `/tmp/k3work/` (test fixtures) | deleted + rows pruned |
+| `/tmp/c113.2v8rXB/` scratch | deleted + rows pruned |
+| `/tmp/{kA,kC,kQ,k1,out1,err1,err2}.txt`, `man_out.txt`, `run-card-*.txt`, `smoke-*.txt`, `fake-kimi-prompt.txt`, `digup-drain/*` | deleted + rows pruned |
+
+Verification (post-cleanup):
+- 8-query sweep ? **no `/tmp` paths** in doc-index search results
+- `code:` search ? **no `/tmp` paths** in the code index
+- Search smoke: pets ? `lease-pets.txt`; invoice ? `invoice-march.txt` + Conectta PDF;
+  code backoff ? `ctt-digup`/`ctt_comm`/`DigUp` paths. All hits are user corpora.
+- Final: `vectors: 2,578` ? `doc 304 ? 299 done ? 5 skipped` ? nothing pending
