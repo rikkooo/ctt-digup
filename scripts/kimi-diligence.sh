@@ -45,10 +45,15 @@ abs_from_root() {
   esac
 }
 
-# Map a /mnt/<drive>/... path to a Windows <DRIVE>:\... path; else echo unchanged.
+# Map a /mnt/<drive>/... (WSL) or /c/... (Git Bash/MSYS) path to a Windows
+# <DRIVE>:\... path; else echo unchanged.
 win_path() {
   local p="$1"
   if [[ "$p" =~ ^/mnt/([A-Za-z])/(.*)$ ]]; then
+    local drive="${BASH_REMATCH[1]}"
+    local rest="${BASH_REMATCH[2]//\//\\}"
+    printf '%s\n' "${drive^^}:\\${rest}"
+  elif [[ "$p" =~ ^/([A-Za-z])/(.*)$ ]]; then
     local drive="${BASH_REMATCH[1]}"
     local rest="${BASH_REMATCH[2]//\//\\}"
     printf '%s\n' "${drive^^}:\\${rest}"

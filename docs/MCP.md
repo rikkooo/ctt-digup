@@ -221,7 +221,10 @@ What would be indexed, and roughly how long the first pass takes.
 { "folders": ["/mnt/c/Users/enric/Documents", "/mnt/c/Users/enric/Desktop"] }
 ```
 
-**Example response** (real `digup estimate --json` object)
+**Example response** (real output; captured from
+`digup estimate /home/ubuntu/.local/share/ctt-digup-samples --json` — the `data`
+object below is the CLI's object, wrapped by the server envelope. Exact field
+sets vary with folder content and digup version.)
 
 ```json
 {
@@ -230,20 +233,20 @@ What would be indexed, and roughly how long the first pass takes.
   "data": {
     "audio_seconds": 0,
     "bytes": 0,
-    "calibrated": false,
+    "calibrated": true,
     "code_stretches": 0,
     "datasets": 0,
-    "files": { "doc": 2 },
-    "folder": "/tmp/digup-smoke",
-    "kind_seconds": { "doc": 0.09 },
+    "files": { "doc": 3 },
+    "folder": "/home/ubuntu/.local/share/ctt-digup-samples",
+    "kind_seconds": { "doc": 0.135 },
     "later_seconds": 0,
     "left_out": {},
     "long_files": 0,
-    "ms": 0,
+    "ms": 1,
     "pdf_pages": 0,
     "pdf_pages_total": 0,
     "readable": true,
-    "seconds": 0.09,
+    "seconds": 0.135,
     "skipped": 0,
     "subfolders": [],
     "video_seconds": 0

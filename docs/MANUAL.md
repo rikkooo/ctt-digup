@@ -1,4 +1,4 @@
-﻿# ctt-digup Manual
+# ctt-digup Manual
 
 Semantic file search for every agent and every shell — DigUp on Windows 11 and WSL Ubuntu-26.04, through an MCP server and a documented CLI.
 
@@ -54,7 +54,7 @@ Expected: `digup --help` prints the usage banner (`digup estimate | index | sear
 
    If SmartScreen blocks it: **More info → Run anyway** (the beta installer is unsigned).
 3. Verify DigUp appears in the Start menu / tray. Its data folder lives under `%LOCALAPPDATA%`.
-4. The Windows install ships the `digup` helper next to the app. Find it and note the absolute path (add it to `PATH` if you want `digup` in PowerShell):
+4. The Windows install ships the `digup` helper next to the app. Its literal path is `C:\Users\enric\AppData\Local\DigUp\helper\digup.exe` (per-user install; the system-wide install variant is `C:\Program Files\DigUp\helper\digup.exe`). You can also discover it with:
 
    ```powershell
    Get-ChildItem "$env:LOCALAPPDATA" -Recurse -Filter digup.exe -ErrorAction SilentlyContinue | Select-Object -First 3 FullName
@@ -141,9 +141,9 @@ Pick the folders you actually search. Defaults used by this project:
 
 | Folder | Notes |
 |---|---|
-| `/mnt/c/Users/<user>/Documents` | contracts, invoices, notes |
-| `/mnt/c/Users/<user>/Desktop` | current work |
-| `/mnt/c/Users/<user>/Downloads` | can be large — estimate first |
+| `/mnt/c/Users/<user>/Documents` | may be empty of indexable docs — on this machine all 3 files are skipped as "other type"; `Downloads` holds the real doc corpus |
+| `/mnt/c/Users/<user>/Desktop` | not present when Desktop is OneDrive-redirected (path does not exist under `/mnt/c/Users/<user>/`); use `/mnt/c/Users/<user>/OneDrive/Desktop` instead |
+| `/mnt/c/Users/<user>/Downloads` | can be large — estimate first (356 indexable files here; ~33 min first pass) |
 | `/mnt/c/Users/<user>/Pictures` | optional; vision-heavy and slow |
 
 **WSL Ubuntu-26.04:**

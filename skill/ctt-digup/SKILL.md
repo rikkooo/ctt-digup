@@ -53,61 +53,75 @@ From **WSL / Linux bash**, run `digup` directly.
 
 ### Index folders
 
-Project convention uses two index dirs (env-overridable). Pass the same `--index DIR` to `estimate`, `index`, `search`, and `status`.
+**Primary strategy: one shared default index** at `~/.local/share/digup/index`. Omit `--index` and every command (`estimate`, `index`, `search`, `status`) uses it — it holds both the Windows corpora (via `/mnt/c`) and the WSL folders in one place. Only pass `--index DIR` when you deliberately split corpora into separate indexes.
+
+Shared default (recommended):
 
 | Corpus | Index dir | Folders |
 |---|---|---|
-| Windows 11 (via WSL mount) | `~/.local/share/digup-index-windows` | `/mnt/c/Users/enric/Documents`, `.../Desktop`, `.../Downloads` |
-| WSL Ubuntu-26.04 | `~/.local/share/digup-index-wsl` | `~/devs`, `~/Documents`, `~/Desktop` |
+| Windows 11 (via WSL mount) + WSL Ubuntu-26.04 | default `~/.local/share/digup/index` (omit `--index`) | `/mnt/c/Users/enric/Documents`, `.../Desktop`, `.../Downloads`, `~/devs`, `~/Documents`, `~/Desktop` |
 
 Replace `enric` with the Windows username if different (`WIN_USER`).
 
 ```bash
-# --- Windows 11 folders (from WSL) ---
+# --- Windows 11 folders (from WSL) → shared default index ---
 WIN_USER=enric
 MNT=/mnt/c/Users/$WIN_USER
-WIN_IDX=$HOME/.local/share/digup-index-windows
 
-digup estimate "$MNT/Documents" "$MNT/Desktop" "$MNT/Downloads" --index "$WIN_IDX" --json
-digup index    "$MNT/Documents" "$MNT/Desktop" "$MNT/Downloads" --index "$WIN_IDX"
-digup status   --index "$WIN_IDX"
+digup estimate "$MNT/Documents" "$MNT/Desktop" "$MNT/Downloads" --json
+digup index    "$MNT/Documents" "$MNT/Desktop" "$MNT/Downloads"
 
 # Bound a large first pass / skip noise
-digup index "$MNT/Documents" --index "$WIN_IDX" --limit 200
-digup index "$MNT/Downloads" --index "$WIN_IDX" --exclude "$MNT/Downloads/node_modules" --exclude-ext "heic,zip"
+digup index "$MNT/Documents" --limit 200
+digup index "$MNT/Downloads" --exclude "$MNT/Downloads/node_modules" --exclude-ext "heic,zip"
 
-# --- WSL folders ---
-WSL_IDX=$HOME/.local/share/digup-index-wsl
-
-digup estimate "$HOME/devs" --index "$WSL_IDX" --json
-digup index    "$HOME/devs" "$HOME/Documents" "$HOME/Desktop" --index "$WSL_IDX"
-digup status   --index "$WSL_IDX"
+# --- WSL folders → same shared default index ---
+digup estimate "$HOME/devs" --json
+digup index    "$HOME/devs" "$HOME/Documents" "$HOME/Desktop"
 
 # Optional: code index for repos under ~/devs (source files, minus what git ignores)
-digup index "$HOME/devs" --index "$WSL_IDX" --code
+digup index "$HOME/devs" --code
 ```
 
-Or run the repo scripts (if present):
+Or run the repo scripts (if present) — they default to the same shared index:
 
 ```bash
-bash ~/devs/ctt-digup/scripts/index-windows.sh
-bash ~/devs/ctt-digup/scripts/index-wsl.sh
+bash ~/devs/ctt-digup/scripts/index-windows.sh   # INDEX_DIR=${DIGUP_INDEX_WIN:-~/.local/share/digup/index}
+bash ~/devs/ctt-digup/scripts/index-wsl.sh       # INDEX_DIR=${DIGUP_INDEX_WSL:-~/.local/share/digup/index}
 ```
 
-Defaults if you omit `--index`: DigUp's own folder (`digup status` prints `index: ~/.local/share/digup/index/index.sqlite`).
+Defaults if you omit `--index`: DigUp's own folder (`digup status` prints `index: ~/.local/share/digup/index/index.sqlite`) — this shared default is the primary convention in this skill.
+
+**Optional split alternative** (env-overridable): give each corpus its own index and pass the same `--index DIR` to `estimate`, `index`, `search`, and `status`:
+
+| Corpus | Index dir | Folders |
+|---|---|---|
+| Windows 11 (via WSL mount) | `${DIGUP_INDEX_WIN:-~/.local/share/digup-index-windows}` | `/mnt/c/Users/enric/Documents`, `.../Desktop`, `.../Downloads` |
+| WSL Ubuntu-26.04 | `${DIGUP_INDEX_WSL:-~/.local/share/digup-index-wsl}` | `~/devs`, `~/Documents`, `~/Desktop` |
+
+```bash
+WIN_IDX=${DIGUP_INDEX_WIN:-$HOME/.local/share/digup-index-windows}
+WSL_IDX=${DIGUP_INDEX_WSL:-$HOME/.local/share/digup-index-wsl}
+digup index "$MNT/Documents" "$MNT/Desktop" "$MNT/Downloads" --index "$WIN_IDX"
+digup index "$HOME/devs" "$HOME/Documents" "$HOME/Desktop" --index "$WSL_IDX"
+```
 
 ### Search (natural language)
 
 ```bash
 # Human-readable ranked list (path, kind, folder, excerpt, score reasons)
-digup search "the clause about pets" --index "$WIN_IDX"
-digup search "invoice from last March" -n 5 --index "$WIN_IDX"
+# — shared default index (omit --index)
+digup search "the clause about pets"
+digup search "invoice from last March" -n 5
 
 # JSON (pretty-printed array of hit objects) — use this when reporting to another agent
-digup search "screenshot of a whiteboard diagram" -n 5 --json --index "$WSL_IDX"
+digup search "screenshot of a whiteboard diagram" -n 5 --json
 
 # Filter by kind: screenshot, image, pdf, doc, audio, video (comma-separated)
-digup search "team offsite photo" --kind image,screenshot --index "$WIN_IDX"
+digup search "team offsite photo" --kind image,screenshot
+
+# Only if you split indexes: pass the matching --index DIR
+digup search "the clause about pets" --index "$WIN_IDX"
 ```
 
 JSON hit fields (`digup search --json`):
@@ -145,9 +159,9 @@ Keep the whole query on one argument; the prefix is the literal `code:` (case-in
 ### Status / JSON
 
 ```bash
-digup status                 # default index
-digup status --index "$WIN_IDX"
-digup status --index "$WSL_IDX"
+digup status                 # shared default index (primary)
+digup status --index "$WIN_IDX"    # only if you split indexes
+digup status --index "$WSL_IDX"    # only if you split indexes
 ```
 
 `status` is human text (no `--json`). Read it as:
@@ -226,32 +240,33 @@ then call tools `digup_search`, `digup_index`, `digup_estimate`, `digup_status`,
 # 1. Fresh session health check
 digup --help >/dev/null && digup status
 
-# 2. Estimate then index Windows Documents/Desktop/Downloads
-WIN_IDX=$HOME/.local/share/digup-index-windows
-digup estimate /mnt/c/Users/enric/Documents /mnt/c/Users/enric/Desktop /mnt/c/Users/enric/Downloads --index "$WIN_IDX" --json
-digup index    /mnt/c/Users/enric/Documents /mnt/c/Users/enric/Desktop /mnt/c/Users/enric/Downloads --index "$WIN_IDX"
+# 2. Estimate then index Windows Documents/Desktop/Downloads (shared default index)
+digup estimate /mnt/c/Users/enric/Documents /mnt/c/Users/enric/Desktop /mnt/c/Users/enric/Downloads --json
+digup index    /mnt/c/Users/enric/Documents /mnt/c/Users/enric/Desktop /mnt/c/Users/enric/Downloads
 
 # 3. Meaning search for a document (JSON, top 5)
-digup search "contract clause about pets" -n 5 --json --index "$WIN_IDX"
+digup search "contract clause about pets" -n 5 --json
 
 # 4. Find a screenshot / video moment
-digup search "whiteboard architecture drawing" --kind screenshot,image -n 5 --index "$WIN_IDX"
-digup search "demo of the login flow" --kind video -n 3 --index "$WIN_IDX"
+digup search "whiteboard architecture drawing" --kind screenshot,image -n 5
+digup search "demo of the login flow" --kind video -n 3
 
-# 5. Index WSL projects + search code
-WSL_IDX=$HOME/.local/share/digup-index-wsl
-digup index "$HOME/devs" --index "$WSL_IDX" --code
-digup search "code: spawn a subagent and collect its report" -n 5 --json --index "$WSL_IDX"
+# 5. Index WSL projects + search code (same shared default index)
+digup index "$HOME/devs" --code
+digup search "code: spawn a subagent and collect its report" -n 5 --json
 
-# 6. Check both corpora
-digup status --index "$HOME/.local/share/digup-index-windows"
-digup status --index "$HOME/.local/share/digup-index-wsl"
+# 6. Check status (shared default holds both corpora)
+digup status
 
 # 7. Reindex after model/settings change (expensive)
-digup index "$HOME/devs" --index "$WSL_IDX" --reindex
+digup index "$HOME/devs" --reindex
 
 # 8. Windows PowerShell one-liner
-# wsl -e bash -lc "digup search 'invoice from last March' -n 5 --json --index ~/.local/share/digup-index-windows"
+# wsl -e bash -lc "digup search 'invoice from last March' -n 5 --json"
+
+# 9. Optional split indexes (only if you chose the split strategy)
+# WIN_IDX=$HOME/.local/share/digup-index-windows
+# digup search "contract clause about pets" -n 5 --json --index "$WIN_IDX"
 ```
 
 ## Result-reporting template (sub-agents)
@@ -289,15 +304,15 @@ Rules for sub-agents:
 | `digup: command not found` in WSL | `sudo ln -sf /usr/lib/DigUp/helper/digup /usr/local/bin/digup` (package: `DigUp_*.deb`, see `scripts/install-digup.sh`). |
 | `libgomp.so.1` missing | `sudo apt-get install -y libgomp1`. |
 | `ctt-digup: command not found` | Expected before mcp2cli is wired. Use raw `digup`. Optional: `npm install -g @tronsfey/mcp2cli`. |
-| `no good matches` and `vectors: 0` | Index first (`digup index <folders> --index DIR`); wait for pending docs to embed. |
+| `no good matches` and `vectors: 0` | Index first (`digup index <folders>` — shared default, or `--index DIR` if split); wait for pending docs to embed. |
 | Model missing / `*.partial` | `digup download-model` (resumes; ~865 MB). Set `DIGUP_MODELS` to a custom model dir. |
-| Search hits wrong corpus | Pass the matching `--index DIR` (`digup-index-windows` vs `digup-index-wsl`). |
+| Search hits wrong corpus | Primary strategy is one shared default index (check the `index:` line in `digup status`). Only if you split indexes: pass the matching `--index DIR` everywhere. |
 | `/mnt/c/...` indexing is slow | Expected (drvfs). Use `--limit N` for the first pass; exclude `node_modules`, huge zips via `--exclude` / `--exclude-ext`. |
 | `search for what?` | Query argument empty — quote the query: `digup search "words here"`. |
 | `code:` finds nothing | Build the code index first: `digup index ~/devs --code`. |
 | Need a clean machine | `DIGUP_BIN=/usr/local/bin/digup DIGUP_MODELS=~/.local/share/digup/Models` |
 
-Environment variables: `DIGUP_BIN` (binary path for MCP wrapper), `DIGUP_MODELS` (model dir), `DIGUP_INDEX_WIN` / `DIGUP_INDEX_WSL` (project index dirs), `WIN_USER` (Windows username for `/mnt/c/Users/<user>`), `--index DIR` on every digup command.
+Environment variables: `DIGUP_BIN` (binary path for MCP wrapper), `DIGUP_MODELS` (model dir), `DIGUP_INDEX_WIN` / `DIGUP_INDEX_WSL` (optional split-index dirs — the **default is shared** at `~/.local/share/digup/index` when these are unset), `WIN_USER` (Windows username for `/mnt/c/Users/<user>`), `--index DIR` on every digup command to override the index explicitly.
 
 ## Install paths for this skill
 

@@ -1,0 +1,30 @@
+Evidence: live man render of man/ctt-digup.1 inside WSL Ubuntu-26.04
+Command: man -l /mnt/c/devs/ctt-digup/man/ctt-digup.1 | head -20
+Date: 2026-10-26T09:47:40Z
+
+CTT-DIGUP(1)                                         User Commands                                         CTT-DIGUP(1)
+
+NAME
+       ctt-digup - semantic file search for every agent and every shell (DigUp via MCP and mcp2cli)
+
+SYNOPSIS
+       ctt-digup command [options] [args]
+
+       ctt-digup search query...  [-n N] [--kind K,K] [--code] [--json]
+
+       ctt-digup index folder...  [--code]
+
+       ctt-digup estimate folder...  [--json]
+
+       ctt-digup status [--json]
+
+       ctt-digup download-model
+
+       digup command...  [--index DIR]
+
+
+man exit status: 0
+stderr: 
+man direct (full render) exit status: 0
+stderr: 
+groff: /usr/bin/groff; man: /usr/bin/man

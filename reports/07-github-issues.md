@@ -1,4 +1,4 @@
-# Dual diligence - Card 07
+# Dual diligence — Card 07
 
 Inspector: kimi cli   Date: 2026-10-24
 

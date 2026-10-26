@@ -1,4 +1,4 @@
-# Dual diligence - Card 09
+# Dual diligence — Card 09
 
 Inspector: kimi cli   Date: 2026-10-24
 

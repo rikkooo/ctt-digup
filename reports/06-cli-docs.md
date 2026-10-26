@@ -1,4 +1,4 @@
-# Dual diligence - Card 06
+# Dual diligence — Card 06
 
 Inspector: kimi cli   Date: 2026-10-24
 

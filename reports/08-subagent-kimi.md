@@ -1,4 +1,4 @@
-# Dual diligence - Card 08
+# Dual diligence — Card 08
 
 Inspector: kimi cli   Date: 2026-10-24
 
